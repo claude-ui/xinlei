@@ -1,0 +1,37 @@
+name: Convert PDFs to Text
+
+on:
+  push:
+    paths:
+      - '**.pdf'
+  workflow_dispatch:  # 允许手动触发，用于转换已有的PDF
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pdftotext
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      - name: Convert all PDFs to text
+        run: |
+          mkdir -p txt_output
+          for pdf in *.pdf; do
+            if [ -f "$pdf" ]; then
+              txt_name="txt_output/$(basename "$pdf" .pdf).txt"
+              echo "Converting: $pdf"
+              pdftotext -layout "$pdf" "$txt_name"
+            fi
+          done
+
+      - name: Commit text files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add txt_output/
+          git diff --staged --quiet || git commit -m "Auto-convert PDFs to text"
+          git push
